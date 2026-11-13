@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#171717">
+<title>JOEFOOD14 POS</title>
+<style>
+:root{--bg:#101114;--panel:#1b1d22;--panel2:#242730;--text:#f7f7f7;--muted:#a9acb5;--yellow:#ffc928;--line:#343741;--green:#42c98b;--red:#ff6666}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px system-ui,-apple-system,Segoe UI,Arial,sans-serif;padding-bottom:82px}
+header{position:sticky;top:0;z-index:5;background:#17181c;border-bottom:1px solid var(--line);padding:13px 15px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.brand{font-weight:900;letter-spacing:1px;font-size:19px}.brand span{color:var(--yellow)}.sub{font-size:11px;color:var(--muted);letter-spacing:1.5px}
+button,input,select{font:inherit}button{border:0;border-radius:11px;padding:11px 13px;background:var(--panel2);color:var(--text);font-weight:700;cursor:pointer}button.primary{background:var(--yellow);color:#171717}button.danger{background:#51282b;color:#ffd9d9}button.small{padding:8px 10px;font-size:13px}
+nav{display:flex;gap:7px;padding:10px;overflow:auto;background:#15161a;position:sticky;top:60px;z-index:4}nav button{white-space:nowrap;padding:9px 12px}nav button.active{background:var(--yellow);color:#111}
+main{padding:13px;max-width:900px;margin:auto}.row{display:flex;gap:9px;align-items:center}.between{justify-content:space-between}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:13px;margin-bottom:11px}.muted{color:var(--muted)}.tiny{font-size:12px}.price{color:var(--yellow);font-weight:900}.catbar{display:flex;gap:7px;overflow:auto;margin:12px 0}.catbar button{white-space:nowrap}.product{min-height:100px;text-align:start;display:flex;flex-direction:column;justify-content:space-between;gap:9px}.product strong{font-size:15px}.product .price{font-size:16px}
+input,select{width:100%;background:#111318;border:1px solid var(--line);border-radius:10px;padding:11px;color:var(--text);margin:5px 0 10px}label{font-size:12px;color:var(--muted)}
+.cartline{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}.qty{display:flex;align-items:center;gap:6px}.qty button{padding:5px 9px}.total{font-size:24px;font-weight:900;color:var(--yellow)}
+.tabs{display:none}.page{display:none}.page.active{display:block}
+.bottom{position:fixed;bottom:0;left:0;right:0;z-index:6;background:#191a1f;border-top:1px solid var(--line);padding:10px 13px calc(10px + env(safe-area-inset-bottom));display:flex;gap:9px}.bottom button{flex:1}
+.statgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}.stat{background:var(--panel2);padding:13px;border-radius:12px}.stat b{display:block;font-size:21px;color:var(--yellow);margin-top:5px}
+.itemrow{display:flex;gap:8px;align-items:center;border-bottom:1px solid var(--line);padding:9px 0}.itemrow .grow{flex:1;min-width:0}
+hr{border:0;border-top:1px solid var(--line);margin:13px 0}.hide{display:none!important}
+#toast{position:fixed;top:75px;left:50%;transform:translateX(-50%);background:#2d573f;color:white;padding:10px 15px;border-radius:20px;z-index:20;display:none}
+@media(min-width:650px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}.statgrid{grid-template-columns:repeat(4,1fr)}main{padding:20px}}
+@media print{body{background:white;color:black;padding:0}header,nav,.bottom,.no-print,button{display:none!important}.page{display:none!important}#receiptPrint{display:block!important;color:black}.card{border:0;background:white;color:black}}
+</style>
+
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#171717">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+\n</head>
+<body>
+<header><div><div class="brand">JOEFOOD<span>14</span> POS</div><div class="sub" id="headerSub">CAISSE • COMMANDES • GESTION</div></div><button class="small" onclick="toggleLang()" id="langBtn">عربي</button></header>
+<nav id="nav">
+<button class="active" data-page="sale" onclick="showPage('sale')" data-fr="Caisse" data-ar="الصندوق">Caisse</button>
+<button data-page="orders" onclick="showPage('orders')" data-fr="Commandes" data-ar="الطلبات">Commandes</button>
+<button data-page="reports" onclick="showPage('reports')" data-fr="Rapports" data-ar="التقارير">Rapports</button>
+<button data-page="menu" onclick="showPage('menu')" data-fr="Menu" data-ar="القائمة">Menu</button>
+<button data-page="settings" onclick="showPage('settings')" data-fr="Réglages" data-ar="الإعدادات">Réglages</button>
+</nav>
+<main>
+<section id="sale" class="page active">
+<div class="row between"><div><h2 data-fr="Nouvelle commande" data-ar="طلب جديد">Nouvelle commande</h2><div class="muted tiny" id="todayLabel"></div></div><button class="small" onclick="clearCart()" data-fr="Vider" data-ar="إفراغ">Vider</button></div>
+<div class="row"><input id="search" placeholder="Rechercher un produit..." oninput="renderProducts()" style="margin-bottom:0"><select id="orderType" style="max-width:145px;margin-bottom:0"><option value="Sur place">Sur place</option><option value="À emporter">À emporter</option><option value="Livraison">Livraison</option></select></div>
+<div class="catbar" id="categories"></div>
+<div class="grid" id="products"></div>
+<div class="card" style="margin-top:14px">
+<div class="row between"><h3 data-fr="Panier" data-ar="السلة">Panier</h3><span class="muted tiny" id="cartCount">0 article</span></div>
+<div id="cart"></div>
+<div class="row between"><b data-fr="Total" data-ar="المجموع">Total</b><div class="total" id="cartTotal">0 DA</div></div>
+<label data-fr="Nom / téléphone (facultatif)" data-ar="الاسم / الهاتف (اختياري)">Nom / téléphone (facultatif)</label><input id="customer" placeholder="Client">
+<button class="primary" style="width:100%;margin-top:5px" onclick="checkout()" data-fr="Valider la commande" data-ar="تأكيد الطلب">Valider la commande</button>
+</div>
+</section>
+<section id="orders" class="page">
+<h2 data-fr="Commandes enregistrées" data-ar="الطلبات المسجلة">Commandes enregistrées</h2>
+<div class="row"><input type="date" id="ordersDate" onchange="renderOrders()"><button class="small" onclick="document.getElementById('ordersDate').value='';renderOrders()" data-fr="Tout" data-ar="الكل">Tout</button></div>
+<div id="ordersList"></div>
+</section>
+<section id="reports" class="page">
+<h2 data-fr="Rapport du jour" data-ar="تقرير اليوم">Rapport du jour</h2>
+<div class="statgrid" id="stats"></div>
+<div class="card"><h3 data-fr="Produits vendus aujourd'hui" data-ar="المنتجات المباعة اليوم">Produits vendus aujourd'hui</h3><div id="topProducts"></div></div>
+<div class="card"><h3 data-fr="Ajouter une dépense" data-ar="إضافة مصروف">Ajouter une dépense</h3>
+<label data-fr="Libellé" data-ar="البيان">Libellé</label><input id="expenseName" placeholder="Ex: achats, gaz...">
+<label data-fr="Montant (DA)" data-ar="المبلغ (دج)">Montant (DA)</label><input id="expenseAmount" type="number" min="0" placeholder="0">
+<button class="primary" onclick="addExpense()" data-fr="Enregistrer la dépense" data-ar="حفظ المصروف">Enregistrer la dépense</button><div id="expensesList"></div></div>
+</section>
+<section id="menu" class="page">
+<h2 data-fr="Gestion du menu" data-ar="تسيير القائمة">Gestion du menu</h2><p class="muted tiny" data-fr="Modifiez les prix ou ajoutez vos produits. Les changements sont enregistrés sur ce téléphone." data-ar="بدّل الأسعار أو زيد منتجات. التغييرات تتحفظ في هذا الهاتف.">Modifiez les prix ou ajoutez vos produits.</p>
+<div class="card"><label data-fr="Nom du produit" data-ar="اسم المنتج">Nom du produit</label><input id="newName" placeholder="Produit / المنتج"><label data-fr="Catégorie" data-ar="الصنف">Catégorie</label><select id="newCat"></select><label data-fr="Prix (DA)" data-ar="السعر (دج)">Prix (DA)</label><input id="newPrice" type="number" min="0" placeholder="0"><button class="primary" onclick="addProduct()" data-fr="Ajouter le produit" data-ar="إضافة المنتج">Ajouter le produit</button></div>
+<div id="menuList"></div>
+</section>
+<section id="settings" class="page">
+<h2 data-fr="Réglages & sauvegarde" data-ar="الإعدادات والنسخ الاحتياطي">Réglages & sauvegarde</h2>
+<div class="card"><h3 data-fr="Informations du commerce" data-ar="معلومات المحل">Informations du commerce</h3><label>Nom</label><input id="shopName" value="JOEFOOD14"><label data-fr="Téléphone" data-ar="الهاتف">Téléphone</label><input id="shopPhone" value="0671090733"><label data-fr="Adresse" data-ar="العنوان">Adresse</label><input id="shopAddress" value="لاري السوقر، عين قاسمة، تيارت"><button class="primary" onclick="saveShop()" data-fr="Enregistrer" data-ar="حفظ">Enregistrer</button></div>
+<div class="card"><h3 data-fr="Sauvegarde des données" data-ar="نسخ احتياطي للبيانات">Sauvegarde des données</h3><p class="muted tiny" data-fr="Exportez régulièrement une sauvegarde pour ne pas perdre vos ventes si vous changez de téléphone." data-ar="دير نسخة احتياطية بانتظام باش ما تضيعش المبيعات إذا بدلت الهاتف.">Exportez régulièrement une sauvegarde.</p><button class="primary" onclick="backup()" data-fr="Exporter la sauvegarde" data-ar="تصدير نسخة احتياطية">Exporter la sauvegarde</button><label data-fr="Restaurer une sauvegarde" data-ar="استرجاع نسخة احتياطية">Restaurer une sauvegarde</label><input type="file" id="restoreFile" accept="application/json" onchange="restoreBackup(event)"></div>
+<div class="card"><h3 data-fr="État" data-ar="الحالة">État</h3><div class="muted tiny" id="storageStatus">Données enregistrées sur cet appareil.</div></div>
+</section>
+<div id="receiptPrint" class="hide"></div>
+</main>
+<div class="bottom"><button onclick="showPage('sale')" class="primary" data-fr="＋ Vente" data-ar="＋ بيع">＋ Vente</button><button onclick="showPage('orders')" data-fr="Commandes" data-ar="الطلبات">Commandes</button><button onclick="showPage('reports')" data-fr="Bilan" data-ar="الحصيلة">Bilan</button></div>
+<div id="toast"></div>
+<script>
+const seed=[
+["PLATS","دجاج محمر","Poulet rôti",400],["PLATS","ماريني","Marini",400],["PLATS","كبدة دجاج مشرملة","Foie de poulet",500],["PLATS","مرقاز","Merguez",450],["PLATS","سبيسيال","Spécial",400],["PLATS","لوبيا","Loubia",200],["PLATS","عدس","Lentilles",200],["PLATS","ميلونج","Mélange",250],["PLATS","فريت اوملات","Frites omelette",200],
+["SANDWICHS","سبيسيال","Spécial",250],["SANDWICHS","كبدة دجاج","Foie de poulet",350],["SANDWICHS","فريت اوملات","Frites omelette",150],["SANDWICHS","ماريني","Marini",250],["SANDWICHS","مرقاز","Merguez",250],
+["TACOS","طاكوس ماريني","Tacos marini",400],["TACOS","طاكوس كفتة دجاج","Tacos kefta poulet",350],
+["PIZZA","بيتزا 3 فرماج","Pizza 3 fromages",500],["PIZZA","بيتزا مارغريتا","Pizza marguerite",350],["PIZZA","بيتزا دجاج","Pizza poulet",500],
+["SOUFLET","سوفلي دجاج","Souflet poulet",150],["DIVERS","فرماج معمر بالبنة","Fromage farci",150],["DIVERS","Burger PH","Burger PH",200]
+];
+const cats=["PLATS","SANDWICHS","TACOS","PIZZA","SOUFLET","DIVERS"];
+let data=load(),cart={},activeCat="TOUS",lang="fr";
+function load(){try{let x=JSON.parse(localStorage.getItem("joefood14pos"));if(x&&x.products)return x}catch(e){}return {products:seed.map((p,i)=>({id:i+1,cat:p[0],ar:p[1],fr:p[2],price:p[3],active:true})),orders:[],expenses:[],shop:{name:"JOEFOOD14",phone:"0671090733",address:"لاري السوقر، عين قاسمة، تيارت"}}}
+function save(){localStorage.setItem("joefood14pos",JSON.stringify(data));document.getElementById("storageStatus").textContent="✓ Données enregistrées sur cet appareil / البيانات محفوظة في هذا الهاتف"}
+function money(n){return Math.round(n||0).toLocaleString("fr-FR")+" DA"}
+function dateKey(d=new Date()){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function tr(fr,ar){return lang==="ar"?ar:fr}
+function toast(s){let t=document.getElementById("toast");t.textContent=s;t.style.display="block";setTimeout(()=>t.style.display="none",1900)}
+function toggleLang(){lang=lang==="fr"?"ar":"fr";document.documentElement.dir=lang==="ar"?"rtl":"ltr";document.documentElement.lang=lang;document.getElementById("langBtn").textContent=lang==="fr"?"عربي":"Français";document.querySelectorAll("[data-fr]").forEach(e=>e.textContent=tr(e.dataset.fr,e.dataset.ar));renderAll()}
+function showPage(id){document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id===id));document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===id));renderAll();window.scrollTo(0,0)}
+function renderCats(){let el=document.getElementById("categories");el.innerHTML="";["TOUS",...cats].forEach(c=>{let b=document.createElement("button");b.textContent=c==="TOUS"?tr("Tous","الكل"):c;b.className=c===activeCat?"active":"";b.onclick=()=>{activeCat=c;renderProducts()};el.appendChild(b)});document.getElementById("newCat").innerHTML=cats.map(c=>`<option>${c}</option>`).join("")}
+function renderProducts(){let q=document.getElementById("search").value.toLowerCase(),el=document.getElementById("products");el.innerHTML="";data.products.filter(p=>p.active&&(activeCat==="TOUS"||p.cat===activeCat)&&(`${p.ar} ${p.fr} ${p.cat}`).toLowerCase().includes(q)).forEach(p=>{let b=document.createElement("button");b.className="product";b.innerHTML=`<strong>${lang==="ar"?p.ar:p.fr}</strong><span class="muted tiny">${p.cat}</span><span class="price">${money(p.price)}</span>`;b.onclick=()=>{cart[p.id]=(cart[p.id]||0)+1;renderCart()};el.appendChild(b)})}
+function renderCart(){let el=document.getElementById("cart"),total=0,count=0;el.innerHTML="";Object.entries(cart).forEach(([id,qty])=>{let p=data.products.find(x=>x.id==id);if(!p)return;total+=p.price*qty;count+=qty;let d=document.createElement("div");d.className="cartline";d.innerHTML=`<div><b>${lang==="ar"?p.ar:p.fr}</b><div class="muted tiny">${money(p.price)} × ${qty}</div></div><div class="qty"><button onclick="changeQty(${id},-1)">−</button><b>${qty}</b><button onclick="changeQty(${id},1)">+</button></div><b>${money(p.price*qty)}</b>`;el.appendChild(d)});document.getElementById("cartTotal").textContent=money(total);document.getElementById("cartCount").textContent=count+" "+tr("article(s)","منتج")}
+function changeQty(id,n){cart[id]=(cart[id]||0)+n;if(cart[id]<=0)delete cart[id];renderCart()}
+function clearCart(){cart={};renderCart()}
+function checkout(){let items=Object.entries(cart).map(([id,qty])=>{let p=data.products.find(x=>x.id==id);return p?{id:p.id,nameAr:p.ar,nameFr:p.fr,qty,price:p.price}:null}).filter(Boolean);if(!items.length){toast(tr("Panier vide","السلة فارغة"));return}let total=items.reduce((s,x)=>s+x.qty*x.price,0),o={id:Date.now(),date:new Date().toISOString(),day:dateKey(),type:document.getElementById("orderType").value,customer:document.getElementById("customer").value,items,total,status:"Terminée"};data.orders.unshift(o);save();cart={};document.getElementById("customer").value="";renderCart();renderOrders();renderReports();receipt(o);toast(tr("Commande enregistrée","تم تسجيل الطلب"))}
+function receipt(o){let r=document.getElementById("receiptPrint");r.classList.remove("hide");r.innerHTML=`<center><h2>${data.shop.name}</h2><p>${data.shop.phone}<br>${data.shop.address}</p><hr><b>Ticket #${o.id.toString().slice(-6)}</b><p>${new Date(o.date).toLocaleString()}</p></center><p>${o.type} ${o.customer||""}</p>${o.items.map(i=>`<p>${i.nameFr} × ${i.qty} <span style="float:right">${money(i.qty*i.price)}</span></p>`).join("")}<hr><h2>TOTAL: ${money(o.total)}</h2><center>Merci / شكراً لزيارتكم</center>`;setTimeout(()=>{window.print();r.classList.add("hide")},150)}
+function renderOrders(){let el=document.getElementById("ordersList"),filter=document.getElementById("ordersDate").value;let arr=data.orders.filter(o=>!filter||o.day===filter);el.innerHTML=arr.length?"":"<p class='muted'>"+tr("Aucune commande","لا توجد طلبات")+"</p>";arr.forEach(o=>{let d=document.createElement("div");d.className="card";d.innerHTML=`<div class="row between"><b>#${String(o.id).slice(-6)} · ${o.type}</b><b class="price">${money(o.total)}</b></div><div class="muted tiny">${new Date(o.date).toLocaleString()} ${o.customer?"· "+o.customer:""}</div><div class="tiny">${o.items.map(i=>`${i.nameAr} × ${i.qty}`).join("، ")}</div><div class="row" style="margin-top:8px"><button class="small" onclick="reprint(${o.id})">${tr("Ticket","الفاتورة")}</button><button class="small danger" onclick="deleteOrder(${o.id})">${tr("Supprimer","حذف")}</button></div>`;el.appendChild(d)})}
+function reprint(id){let o=data.orders.find(x=>x.id===id);if(o)receipt(o)}
+function deleteOrder(id){if(!confirm(tr("Supprimer cette commande ?","حذف هذا الطلب؟")))return;data.orders=data.orders.filter(o=>o.id!==id);save();renderAll()}
+function todayOrders(){return data.orders.filter(o=>o.day===dateKey())}
+function renderReports(){let os=todayOrders(),sales=os.reduce((s,o)=>s+o.total,0),ex=data.expenses.filter(e=>e.day===dateKey()),cost=ex.reduce((s,e)=>s+e.amount,0),units=os.reduce((s,o)=>s+o.items.reduce((a,i)=>a+i.qty,0),0);document.getElementById("stats").innerHTML=[[tr("Ventes","المبيعات"),money(sales)],[tr("Commandes","الطلبات"),os.length],[tr("Articles","المنتجات"),units],[tr("Dépenses","المصاريف"),money(cost)],[tr("Reste après dépenses","الباقي بعد المصاريف"),money(sales-cost)]].map(x=>`<div class="stat"><span class="muted tiny">${x[0]}</span><b>${x[1]}</b></div>`).join("");let map={};os.forEach(o=>o.items.forEach(i=>map[i.nameAr]=(map[i.nameAr]||0)+i.qty));document.getElementById("topProducts").innerHTML=Object.entries(map).sort((a,b)=>b[1]-a[1]).map(x=>`<div class="itemrow"><span class="grow">${x[0]}</span><b>${x[1]}</b></div>`).join("")||"<span class='muted'>—</span>";document.getElementById("expensesList").innerHTML=ex.map(e=>`<div class="itemrow"><span class="grow">${e.name}</span><b>${money(e.amount)}</b><button class="small danger" onclick="removeExpense(${e.id})">×</button></div>`).join("")}
+function addExpense(){let name=document.getElementById("expenseName").value.trim(),amount=Number(document.getElementById("expenseAmount").value);if(!name||amount<=0){toast(tr("Remplissez les champs","أدخل البيان والمبلغ"));return}data.expenses.unshift({id:Date.now(),name,amount,day:dateKey()});save();document.getElementById("expenseName").value="";document.getElementById("expenseAmount").value="";renderReports();toast(tr("Dépense enregistrée","تم حفظ المصروف"))}
+function removeExpense(id){data.expenses=data.expenses.filter(e=>e.id!==id);save();renderReports()}
+function renderMenu(){let el=document.getElementById("menuList");el.innerHTML="";data.products.forEach(p=>{let d=document.createElement("div");d.className="itemrow";d.innerHTML=`<div class="grow"><b>${p.ar}</b><div class="muted tiny">${p.fr} · ${p.cat}</div></div><input aria-label="Prix" type="number" min="0" value="${p.price}" style="width:90px;margin:0" onchange="changePrice(${p.id},this.value)"><button class="small danger" onclick="removeProduct(${p.id})">×</button>`;el.appendChild(d)})}
+function changePrice(id,v){let p=data.products.find(x=>x.id===id);if(p&&Number(v)>=0){p.price=Number(v);save();renderProducts();toast(tr("Prix modifié","تم تعديل السعر"))}}
+function addProduct(){let ar=document.getElementById("newName").value.trim(),cat=document.getElementById("newCat").value,price=Number(document.getElementById("newPrice").value);if(!ar||price<=0){toast(tr("Nom et prix requis","الاسم والسعر مطلوبان"));return}data.products.push({id:Date.now(),cat,ar,fr:ar,price,active:true});save();document.getElementById("newName").value="";document.getElementById("newPrice").value="";renderAll();toast(tr("Produit ajouté","تمت إضافة المنتج"))}
+function removeProduct(id){if(!confirm(tr("Masquer ce produit ?","إخفاء هذا المنتج؟")))return;let p=data.products.find(x=>x.id===id);if(p)p.active=false;save();renderAll()}
+function saveShop(){data.shop={name:document.getElementById("shopName").value,phone:document.getElementById("shopPhone").value,address:document.getElementById("shopAddress").value};save();toast(tr("Informations enregistrées","تم حفظ المعلومات"))}
+function backup(){let blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="JOEFOOD14-sauvegarde-"+dateKey()+".json";a.click();URL.revokeObjectURL(a.href)}
+function restoreBackup(ev){let f=ev.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);if(!x.products||!x.orders)throw 0;if(confirm(tr("Remplacer les données actuelles ?","استبدال البيانات الحالية؟"))){data=x;save();renderAll();toast(tr("Sauvegarde restaurée","تم استرجاع النسخة"))}}catch(e){alert(tr("Fichier invalide","الملف غير صالح"))}};r.readAsText(f)}
+function renderAll(){renderCats();renderProducts();renderCart();renderOrders();renderReports();renderMenu();document.getElementById("shopName").value=data.shop.name;document.getElementById("shopPhone").value=data.shop.phone;document.getElementById("shopAddress").value=data.shop.address}
+document.getElementById("todayLabel").textContent=new Date().toLocaleDateString();renderAll();save();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(err => console.warn('SW registration failed', err));
+  });
+}
+if (navigator.storage && navigator.storage.persist) {
+  navigator.storage.persist().catch(() => {});
+}
+</script>
+\n</body></html>
